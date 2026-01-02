@@ -57,19 +57,19 @@ Container:      Docker Compose
                           │
         ┌─────────────────┼─────────────────┐
         │                 │                 │
-┌───────▼──────┐  ┌───────▼──────┐  ┌──────▼──────┐
-│ Infrastructure│  │   Modules     │  │   Router    │
-│   Module      │  │  (Self-Cont.) │  │ (Auto-Reg.) │
-│               │  │               │  │             │
-│ • PostgreSQL  │  │ • User        │  │ • Collects  │
-│ • Cassandra   │  │ • Message     │  │   all route │
-│ • Redis       │  │ • Conversation│  │   functions │
-│ • WebSocket   │  │ • Contact     │  │ • Auto-reg. │
-└──────────────┘  └───────────────┘  └─────────────┘
-        │                 │                 │
+┌───────▼──────┐  ┌───────▼──────┐  ┌──────▼─────────┐
+│Infrastructure│  │   Modules    │  │     Router     │
+│  Module      │  │ (Self-Cont.) │  │  (Auto-Reg.)   │
+│              │  │              │  │                │
+│• PostgreSQL  │  │• User        │  │• Collects all  │
+│• Cassandra   │  │• Message     │  │route functions │
+│• Redis       │  │• Conversation│  │• Auto-reg.     │
+│• WebSocket   │  │• Contact     │  │                │
+└──────────────┘  └──────────────┘  └────────────────┘
+        │                  │                │
     ┌───┴───┬──────────────┴──────────────┬─┴───┐
-    │       │              │               │     │
-┌───▼───┐ ┌─▼──────┐  ┌───▼────┐  ┌──────▼──┐ ┌─▼───┐
+    │       │              │              │     │
+┌───▼───┐ ┌─▼───────┐  ┌───▼────┐  ┌──────▼──┐ ┌─▼───┐
 │PgSQL  │ │Cassandra│  │ Redis  │  │WebSocket│ │MinIO│
 │(GORM) │ │ (gocql) │  │(cache) │  │  Hub    │ │(S3) │
 └───────┘ └─────────┘  └────────┘  └─────────┘ └─────┘
