@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for relational data
+  postgres:
+    image: postgres:16-alpine
+    container_name: vnalo_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vnalo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - vnalo_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cassandra for messages
+  cassandra:
+    image: cassandra:5.0
+    container_name: vnalo_cassandra
+    environment:
+      - CASSANDRA_CLUSTER_NAME=VNaloCluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    ports:
+      - "9042:9042"
+      - "7199:7199"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    networks:
+      - vnalo_network
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  # Redis for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: vnalo_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vnalo_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # MinIO for file storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: vnalo_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - vnalo_network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # VNalo API (uncomment when ready to run with Docker)
+  # api:
+  #   build: .
+  #   container_name: vnalo_api
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - POSTGRES_HOST=postgres
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DATABASE=vnalo_db
+  #     - CASSANDRA_HOSTS=cassandra
+  #     - CASSANDRA_KEYSPACE=vnalo_chat
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     cassandra:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - vnalo_network
+
+volumes:
+  postgres_data:
+  cassandra_data:
+  redis_data:
+  minio_data:
+
+networks:
+  vnalo_network:
+    driver: bridge

@@ -1,0 +1,38 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+
+# PostgreSQL for relational data
+postgres:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  database: "vnalo_db"
+  sslmode: "disable"
+
+# Cassandra for messages
+cassandra:
+  hosts:
+    - "localhost"
+  keyspace: "vnalo_chat"
+  username: ""
+  password: ""
+
+# Redis for cache and pub/sub
+redis:
+  host: "localhost"
+  port: "6379"
+  password: ""
+  db: 0
+
+# WebSocket configuration
+websocket:
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  max_message_size: 524288  # 512KB
+
+jwt:
+  secret: "your-secret-key-change-this-in-production"
+  expiration: 86400  # 24 hours
+

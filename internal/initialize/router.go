@@ -1,56 +1,65 @@
 package initialize
 
 import (
-	"github.com/anonystick/go-drunk-backend-api-by-ddd-java/internal/auth/controller/http"
-	initialize "github.com/anonystick/go-drunk-backend-api-by-ddd-java/internal/initialize/auth"
-	"github.com/anonystick/go-drunk-backend-api-by-ddd-java/internal/middleware"
-	"github.com/anonystick/go-drunk-backend-api-by-ddd-java/pkg/response"
+	"log"
+
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/fx"
+
+	"github.com/ndxbinh1922001/VNalo-be/internal/middleware"
 )
 
-func InitRouter(db *gorm.DB, isLogger string) *gin.Engine {
-	// Initialize the router
-	// This function will set up the routes and middleware for the application
-	// It will return a gin.Engine instance that can be used to run the server
+// RouteRegisterFunc is a function that registers routes to a router group
+type RouteRegisterFunc func(*gin.RouterGroup)
 
-	var r *gin.Engine
-	// Set the mode based on the environment
-	if isLogger == "debug" {
-		gin.SetMode(gin.DebugMode)
-		gin.ForceConsoleColor()
-		r = gin.Default()
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-		r = gin.New()
-	}
-	// middlewares
-	r.Use(middleware.CORS) // cross
-	r.Use(middleware.ValidatorMiddleware())
-	// r.Use() // logging
+// RouterModule provides router
+var RouterModule = fx.Options(
+	fx.Provide(NewRouter),
+)
 
-	// r.Use() // limiter global
-	// r.Use(middlewares.Validator())      // middleware
+// RouterParams defines parameters for router
+type RouterParams struct {
+	fx.In
 
-	// r.Use(middlewares.NewRateLimiter().GlobalRateLimiter()) // 100 req/s
-	r.GET("/ping/100", func(ctx *gin.Context) {
+	Config         *Config
+	RouteRegisters []RouteRegisterFunc `group:"routes"` // ← Auto-collect tất cả!
+}
 
-		response.SuccessResponse(ctx, "pong")
+// NewRouter creates and configures the Gin router
+func NewRouter(params RouterParams) *gin.Engine {
+	log.Println("🛣️  Setting up routes...")
+
+	// Set Gin mode
+	gin.SetMode(params.Config.Server.Mode)
+
+	router := gin.New()
+
+	// Global middlewares
+	router.Use(gin.Recovery())
+	router.Use(middleware.CORS())
+	router.Use(middleware.Logger())
+
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"message": "VNalo Backend is running",
+		})
 	})
 
-	r.GET("/ping/200", response.Wrap(func(ctx *gin.Context) (res interface{}, err error) {
-		return "pong", nil
-	}))
+	// Swagger documentation
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// === Đăng ký routes theo module
-	v1 := r.Group("/v1/2025")
-	// Register the auth routes
-	// === DI các handler
-	authHandler := initialize.InitAuth(db)
-	http.RegisterAuthRoutes(v1, authHandler)
+	// API versioning
+	v1 := router.Group("/api/v1")
 
-	// userHandler := initialize.InitUser(db)
+	// Auto-register ALL module routes! ✨
+	for _, registerFunc := range params.RouteRegisters {
+		registerFunc(v1)
+	}
 
-	return r
-
+	log.Printf("✅ Router configured with %d module(s)", len(params.RouteRegisters))
+	return router
 }
